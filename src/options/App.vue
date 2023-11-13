@@ -37,6 +37,27 @@
 
         <div
           class="option text-field"
+          v-if="options.speechService === 'whisperApi'"
+        >
+          <vn-text-field
+            :label="getText('inputLabel_apiKey')"
+            v-model.trim="options.whisperApiKey"
+          >
+          </vn-text-field>
+        </div>
+
+        <a
+          class="service-guide"
+          v-if="options.speechService === 'whisperApi'"
+          target="_blank"
+          rel="noreferrer"
+          href="https://platform.openai.com/docs/guides/speech-to-text"
+        >
+          {{ getText('linkText_apiGuide') }}
+        </a>
+
+        <div
+          class="option text-field"
           v-if="options.speechService === 'ibmSpeechApi'"
         >
           <vn-text-field
@@ -293,6 +314,7 @@ export default {
             speechService: [
               'witSpeechApiDemo',
               'googleSpeechApi',
+              'whisperApi',
               'witSpeechApi',
               'ibmSpeechApi',
               'microsoftSpeechApi'
@@ -333,6 +355,7 @@ export default {
       options: {
         speechService: '',
         googleSpeechApiKey: '',
+        whisperApiKey: '',
         ibmSpeechApiUrl: '',
         ibmSpeechApiKey: '',
         microsoftSpeechApiLoc: '',

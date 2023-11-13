@@ -39,6 +39,11 @@
     "description": "Value of the option."
   },
 
+  "optionValue_speechService_whisperApi": {
+    "message": "OpenAI Whisper",
+    "description": "Value of the option."
+  },
+
   "optionValue_speechService_witSpeechApi": {
     "message": "Wit.ai",
     "description": "Value of the option."

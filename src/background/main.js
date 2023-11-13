@@ -27,7 +27,8 @@ import {
   captchaGoogleSpeechApiLangCodes,
   captchaIbmSpeechApiLangCodes,
   captchaMicrosoftSpeechApiLangCodes,
-  captchaWitSpeechApiLangCodes
+  captchaWitSpeechApiLangCodes,
+  whisperApiSupportedLanguages
 } from 'utils/data';
 import {targetEnv, clientAppVersion} from 'utils/config';
 
@@ -322,6 +323,41 @@ async function getWitSpeechApiResult(apiKey, audioContent) {
   return result;
 }
 
+async function getWhisperApiResult(apiKey, audioContent, language='en') {
+  const result = {};
+  const formData = new FormData()
+  formData.append('file', new Blob([audioContent], {type: 'audio/wav'}));
+  formData.append('model', 'whisper-1');
+  formData.append('response_format', 'text');
+  formData.append('language', language);
+
+  const rsp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    mode: 'cors',
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + apiKey,
+      ContentType: "multipart/form-data"
+    },
+    body: formData
+  });
+
+  if (rsp.status !== 200) {
+    if (rsp.status === 429) {
+      result.errorId = 'error_apiQuotaExceeded';
+      result.errorTimeout = 6000;
+    } else {
+      throw new Error(`API response: ${rsp.status}, ${await rsp.text()}`);
+    }
+  } else {
+    const data = await rsp.text();
+    if (data) {
+      result.text = data.trim();
+    }
+  }
+
+  return result;
+}
+
 async function getGoogleSpeechApiResult(
   apiKey,
   audioContent,
@@ -466,6 +502,19 @@ async function transcribeAudio(audioUrl, lang) {
       }
       solution = result.text;
     }
+  } else if (speechService == 'whisperApi') {
+    const {whisperApiKey: apiKey} = await storage.get('whisperApiKey');
+
+    if (!apiKey) {
+      showNotification({messageId: 'error_missingApiKey'});
+      return;
+    }
+
+    const language = whisperApiSupportedLanguages.includes(lang) ? lang : 'en';
+
+    const result = await getWhisperApiResult(apiKey, audioContent, language);
+    solution = result.text;
+    
   } else if (speechService === 'googleSpeechApi') {
     const {googleSpeechApiKey: apiKey} = await storage.get(
       'googleSpeechApiKey'
