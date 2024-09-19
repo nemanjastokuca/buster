@@ -1,5 +1,5 @@
 <template>
-  <v-app id="app" v-if="dataLoaded">
+  <vn-app v-if="dataLoaded">
     <div class="section">
       <div class="section-title" v-once>
         {{ getText('optionSectionTitle_services') }}
@@ -10,6 +10,7 @@
             :label="getText('optionTitle_speechService')"
             :items="listItems.speechService"
             v-model="options.speechService"
+            transition="scale-transition"
           >
           </vn-select>
         </div>
@@ -95,6 +96,7 @@
             :label="getText('optionTitle_microsoftSpeechApiLoc')"
             :items="listItems.microsoftSpeechApiLoc"
             v-model="options.microsoftSpeechApiLoc"
+            transition="scale-transition"
           >
           </vn-select>
         </div>
@@ -141,6 +143,7 @@
             :label="getText('optionTitle_witSpeechApiLang')"
             :items="listItems.witSpeechApiLang"
             v-model="witSpeechApiLang"
+            transition="scale-transition"
           >
           </vn-select>
 
@@ -246,6 +249,7 @@
             :label="getText('optionTitle_appTheme')"
             :items="listItems.appTheme"
             v-model="options.appTheme"
+            transition="scale-transition"
           >
           </vn-select>
         </div>
@@ -271,18 +275,20 @@
           <vn-button
             class="contribute-button vn-icon--start"
             @click="showContribute"
-            ><vn-icon src="/src/contribute/assets/heart.svg"></vn-icon>
+            ><vn-icon
+              src="/src/assets/icons/misc/favorite-filled.svg"
+            ></vn-icon>
             {{ getText('buttonLabel_contribute') }}
           </vn-button>
         </div>
       </div>
     </div>
-  </v-app>
+  </vn-app>
 </template>
 
 <script>
 import {toRaw} from 'vue';
-import {Button, Icon, Select, Switch, TextField} from 'vueton';
+import {App, Button, Icon, Select, Switch, TextField} from 'vueton';
 
 import storage from 'storage/storage';
 import {getListItems, showContributePage, pingClientApp} from 'utils/app';
@@ -297,6 +303,7 @@ import {
 
 export default {
   components: {
+    [App.name]: App,
     [Button.name]: Button,
     [Icon.name]: Icon,
     [Select.name]: Select,
@@ -375,6 +382,43 @@ export default {
   methods: {
     getText,
 
+    setup: async function () {
+      browser.runtime.onMessage.addListener(this.onMessage);
+
+      const options = await storage.get(optionKeys);
+
+      for (const option of Object.keys(this.options)) {
+        this.options[option] = options[option];
+
+        this.$watch(
+          `options.${option}`,
+          async function (value) {
+            await storage.set({[option]: toRaw(value)});
+            await browser.runtime.sendMessage({id: 'optionChange'});
+          },
+          {deep: true}
+        );
+      }
+
+      this.witSpeechApis = Object.keys(options.witSpeechApiKeys);
+      this.setWitSpeechApiLangOptions();
+
+      document.title = getText('pageTitle', [
+        getText('pageTitle_options'),
+        getText('extensionName')
+      ]);
+
+      this.verifyClientApp();
+
+      this.dataLoaded = true;
+    },
+
+    onMessage: function (request, sender) {
+      if (request.id === 'reloadOptionsPage') {
+        self.location.reload();
+      }
+    },
+
     verifyClientApp: async function () {
       try {
         await pingClientApp();
@@ -428,33 +472,13 @@ export default {
     }
   },
 
-  created: async function () {
-    const options = await storage.get(optionKeys);
-
-    for (const option of Object.keys(this.options)) {
-      this.options[option] = options[option];
-
-      this.$watch(
-        `options.${option}`,
-        async function (value) {
-          await storage.set({[option]: toRaw(value)});
-          await browser.runtime.sendMessage({id: 'optionChange'});
-        },
-        {deep: true}
-      );
-    }
-
-    this.witSpeechApis = Object.keys(options.witSpeechApiKeys);
-    this.setWitSpeechApiLangOptions();
-
+  created: function () {
     document.title = getText('pageTitle', [
       getText('pageTitle_options'),
       getText('extensionName')
     ]);
 
-    this.verifyClientApp();
-
-    this.dataLoaded = true;
+    this.setup();
   }
 };
 </script>
@@ -463,6 +487,7 @@ export default {
 @use 'vueton/styles' as vueton;
 
 @include vueton.theme-base;
+@include vueton.transitions;
 
 .v-application__wrap {
   display: grid;
